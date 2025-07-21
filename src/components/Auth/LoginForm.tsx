@@ -104,12 +104,9 @@ const LoginForm: React.FC = () => {
             <div className="text-sm text-gray-600">
               <p className="font-medium mb-2">Demo Accounts:</p>
               <div className="space-y-1 text-xs">
-                <p><strong>Admin:</strong> admin@scngmai.org</p>
-                <p><strong>President:</strong> president@scngmai.org</p>
-                <p><strong>Secretary:</strong> secretary@scngmai.org</p>
-                <p><strong>Treasurer:</strong> treasurer@scngmai.org</p>
-                <p><strong>Member:</strong> member@scngmai.org</p>
+                <p><strong>Admin:</strong> gabu.sacro@gmail.com</p>
                 <p className="mt-2"><strong>Password:</strong> password123</p>
+                <p className="mt-2 text-xs text-gray-500">Note: Other users can be registered through the system</p>
               </div>
             </div>
           </div>

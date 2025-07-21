@@ -12,6 +12,9 @@ interface DataContextType {
   deleteMember: (id: string) => void;
   addPayment: (memberId: string, year: number, amount: number, date?: string) => void;
   updatePayment: (memberId: string, year: number, updates: Partial<{ amount: number; date: string; isPaid: boolean }>) => void;
+  addOfficer: (officer: Omit<Officer, 'id'>) => void;
+  updateOfficer: (id: string, updates: Partial<Officer>) => void;
+  deleteOfficer: (id: string) => void;
   addMilestone: (milestone: Omit<Milestone, 'id'>) => void;
   updateMilestone: (id: string, updates: Partial<Milestone>) => void;
   deleteMilestone: (id: string) => void;
@@ -67,34 +70,6 @@ const mockMembers: Member[] = [
 ];
 
 const mockOfficers: Officer[] = [
-  {
-    id: '1',
-    name: 'Dr. Roberto Martinez',
-    position: 'President',
-    email: 'president@scngmai.org',
-    phone: '+63 912 111 2222'
-  },
-  {
-    id: '2',
-    name: 'Atty. Carmen Reyes',
-    position: 'Vice President',
-    email: 'vp@scngmai.org',
-    phone: '+63 912 333 4444'
-  },
-  {
-    id: '3',
-    name: 'Prof. Elena Garcia',
-    position: 'Secretary',
-    email: 'secretary@scngmai.org',
-    phone: '+63 912 555 6666'
-  },
-  {
-    id: '4',
-    name: 'CPA Jose Villanueva',
-    position: 'Treasurer',
-    email: 'treasurer@scngmai.org',
-    phone: '+63 912 777 8888'
-  }
 ];
 
 const mockMilestones: Milestone[] = [
@@ -211,6 +186,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMembers(prev => prev.filter(member => member.id !== id));
   };
 
+  const addOfficer = (officerData: Omit<Officer, 'id'>) => {
+    const newOfficer: Officer = {
+      ...officerData,
+      id: Date.now().toString()
+    };
+    setOfficers(prev => [...prev, newOfficer]);
+  };
+
+  const updateOfficer = (id: string, updates: Partial<Officer>) => {
+    setOfficers(prev => prev.map(officer => 
+      officer.id === id ? { ...officer, ...updates } : officer
+    ));
+  };
+
+  const deleteOfficer = (id: string) => {
+    setOfficers(prev => prev.filter(officer => officer.id !== id));
+  };
+
   const addPayment = (memberId: string, year: number, amount: number, date?: string) => {
     setMembers(prev => prev.map(member => {
       if (member.id === memberId) {
@@ -301,6 +294,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteMember,
       addPayment,
       updatePayment,
+      addOfficer,
+      updateOfficer,
+      deleteOfficer,
       addMilestone,
       updateMilestone,
       deleteMilestone,
