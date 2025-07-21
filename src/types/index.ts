@@ -40,6 +40,7 @@ export interface Officer {
   email?: string;
   phone?: string;
   profilePicture?: string;
+  memberId?: string;
 }
 
 export interface Milestone {

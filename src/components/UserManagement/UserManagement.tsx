@@ -9,38 +9,9 @@ const UserManagement: React.FC = () => {
     {
       id: '1',
       name: 'Admin User',
-      email: 'admin@scngmai.org',
+      email: 'gabu.sacro@gmail.com',
       role: 'Admin',
       status: 'active'
-    },
-    {
-      id: '2',
-      name: 'John Doe',
-      email: 'president@scngmai.org',
-      role: 'President',
-      status: 'active'
-    },
-    {
-      id: '3',
-      name: 'Jane Smith',
-      email: 'secretary@scngmai.org',
-      role: 'Secretary',
-      status: 'active'
-    },
-    {
-      id: '4',
-      name: 'Bob Johnson',
-      email: 'treasurer@scngmai.org',
-      role: 'Treasurer',
-      status: 'active'
-    },
-    {
-      id: '5',
-      name: 'Alice Brown',
-      email: 'member@scngmai.org',
-      role: 'Member',
-      status: 'active',
-      memberId: 'GM20240001'
     }
   ]);
 
