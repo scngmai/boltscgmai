@@ -66,8 +66,29 @@ const MemberList: React.FC = () => {
       addPayment(paymentForm.memberId, paymentForm.year, parseFloat(paymentData.amount), paymentData.date);
       setPaymentForm(null);
       setPaymentData({ amount: '780', date: new Date().toISOString().split('T')[0] });
+      // Force re-render by updating a state that triggers component refresh
+      setSearchTerm(prev => prev); // This will trigger a re-render
     }
   };
+
+  const handleStatusChange = (memberId: string, newStatus: MemberStatus) => {
+    updateMember(memberId, { status: newStatus });
+  };
+
+  // Generate year options from 2015 to 2030
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const startYear = 2015;
+    const endYear = 2030;
+    const years = [];
+    
+    for (let year = endYear; year >= startYear; year--) {
+      years.push(year);
+    }
+    return years;
+  };
+
+  const availableYears = generateYearOptions();
 
   const getStatusColor = (status: MemberStatus) => {
     const colors = {
@@ -175,9 +196,23 @@ const MemberList: React.FC = () => {
                       <div className="text-sm text-gray-500">{member.phone || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status)}`}>
-                        {member.status}
-                      </span>
+                      {canEdit ? (
+                        <select
+                          value={member.status}
+                          onChange={(e) => handleStatusChange(member.id, e.target.value as MemberStatus)}
+                          className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-indigo-500 ${getStatusColor(member.status)}`}
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
+                          <option value="Deceased">Deceased</option>
+                          <option value="Dropped">Dropped</option>
+                          <option value="Served">Served</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status)}`}>
+                          {member.status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(getPaymentStatus(member, currentYear))}`}>
@@ -193,15 +228,16 @@ const MemberList: React.FC = () => {
                       <div className="flex space-x-1">
                         {last3Years.map(year => {
                           const status = getPaymentStatus(member, year);
+                          const payment = member.payments.find(p => p.year === year && p.isPaid);
                           return (
                             <div
                               key={year}
                               className={`w-3 h-3 rounded-full cursor-pointer ${
-                                status === 'Paid' ? 'bg-green-400' :
+                                payment ? 'bg-green-400' :
                                 status === 'Pending' ? 'bg-yellow-400' : 'bg-red-400'
                               }`}
-                              title={`${year}: ${status}`}
-                              onClick={() => canAddPayment && status !== 'Paid' && handleAddPayment(member.id, year)}
+                              title={`${year}: ${payment ? 'Paid' : status}${payment ? ` - ${formatCurrency(payment.amount)}` : ''}`}
+                              onClick={() => canAddPayment && !payment && handleAddPayment(member.id, year)}
                             />
                           );
                         })}
@@ -381,12 +417,17 @@ const MemberList: React.FC = () => {
             <form onSubmit={handleSavePayment} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-                <input
-                  type="number"
+                <select
                   value={paymentForm.year}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
-                />
+                  onChange={(e) => setPaymentForm({...paymentForm, year: parseInt(e.target.value)})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  {availableYears.map(year => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Amount (₱)</label>
