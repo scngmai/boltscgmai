@@ -176,7 +176,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMembers(prev => prev.map(member => {
       if (member.id === id) {
         const updated = { ...member, ...updates };
-        return updateMemberDelinquency(updated);
+        const updatedWithDelinquency = updateMemberDelinquency(updated);
+        console.log('Member updated:', updatedWithDelinquency.name, 'Status:', updatedWithDelinquency.status);
+        return updatedWithDelinquency;
       }
       return member;
     }));

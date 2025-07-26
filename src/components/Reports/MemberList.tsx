@@ -73,6 +73,9 @@ const MemberList: React.FC = () => {
 
   const handleStatusChange = (memberId: string, newStatus: MemberStatus) => {
     updateMember(memberId, { status: newStatus });
+    // Force re-render by updating search term (triggers component refresh)
+    setSearchTerm(prev => prev + ' ');
+    setTimeout(() => setSearchTerm(prev => prev.trim()), 10);
   };
 
   // Generate year options from 2015 to 2030
@@ -200,7 +203,7 @@ const MemberList: React.FC = () => {
                         <select
                           value={member.status}
                           onChange={(e) => handleStatusChange(member.id, e.target.value as MemberStatus)}
-                          className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-indigo-500 ${getStatusColor(member.status)}`}
+                          className={`text-xs font-semibold rounded-full px-2 py-1 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${getStatusColor(member.status)}`}
                         >
                           <option value="Active">Active</option>
                           <option value="Inactive">Inactive</option>
