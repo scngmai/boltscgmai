@@ -1,7 +1,6 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
-import { ActivityProvider } from './contexts/ActivityContext';
 import LoginForm from './components/Auth/LoginForm';
 import MainApp from './components/MainApp';
 
@@ -26,11 +25,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <ActivityProvider>
-        <DataProvider>
-          <AppContent />
-        </DataProvider>
-      </ActivityProvider>
+      <DataProvider>
+        <AppContent />
+      </DataProvider>
     </AuthProvider>
   );
 };

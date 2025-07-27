@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Member, Officer, Milestone, BulletinPost } from '../types';
 import { updateMemberDelinquency } from '../utils/memberUtils';
-import { useActivity } from './ActivityContext';
-import { useAuth } from './AuthContext';
 
 interface DataContextType {
   members: Member[];
@@ -118,8 +116,6 @@ const mockBulletinPosts: BulletinPost[] = [
 ];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { addActivity } = useActivity();
-  const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -174,41 +170,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const updatedMember = updateMemberDelinquency(newMember);
     setMembers(prev => [...prev, updatedMember]);
-    
-    // Log activity
-    addActivity({
-      type: 'member_added',
-      description: `New member ${updatedMember.name} registered`,
-      user: user?.name || 'System'
-    });
   };
 
   const updateMember = (id: string, updates: Partial<Member>) => {
-    const oldMember = members.find(m => m.id === id);
     setMembers(prev => prev.map(member => {
       if (member.id === id) {
         const updated = { ...member, ...updates };
         const updatedWithDelinquency = updateMemberDelinquency(updated);
         console.log('Member updated:', updatedWithDelinquency.name, 'Status:', updatedWithDelinquency.status);
-        
-        // Log activity for status changes
-        if (oldMember && oldMember.status !== updatedWithDelinquency.status) {
-          addActivity({
-            type: 'status_changed',
-            description: `${updatedWithDelinquency.name} status changed from ${oldMember.status} to ${updatedWithDelinquency.status}`,
-            user: user?.name || 'System'
-          });
-        }
-        
-        // Log activity for profile updates
-        if (oldMember && (oldMember.name !== updatedWithDelinquency.name || oldMember.email !== updatedWithDelinquency.email)) {
-          addActivity({
-            type: 'profile_updated',
-            description: `${updatedWithDelinquency.name} profile updated`,
-            user: user?.name || 'System'
-          });
-        }
-        
         return updatedWithDelinquency;
       }
       return member;
@@ -225,13 +194,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: Date.now().toString()
     };
     setOfficers(prev => [...prev, newOfficer]);
-    
-    // Log activity
-    addActivity({
-      type: 'officer_added',
-      description: `${newOfficer.name} added as ${newOfficer.position}`,
-      user: user?.name || 'System'
-    });
   };
 
   const updateOfficer = (id: string, updates: Partial<Officer>) => {
@@ -245,7 +207,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addPayment = (memberId: string, year: number, amount: number, date?: string) => {
-    const member = members.find(m => m.id === memberId);
     setMembers(prev => prev.map(member => {
       if (member.id === memberId) {
         const existingPaymentIndex = member.payments.findIndex(p => p.year === year);
@@ -269,15 +230,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return member;
     }));
-    
-    // Log activity
-    if (member) {
-      addActivity({
-        type: 'payment_added',
-        description: `Payment of ₱${amount.toLocaleString()} received from ${member.name} for year ${year}`,
-        user: user?.name || 'System'
-      });
-    }
   };
 
   const updatePayment = (memberId: string, year: number, updates: Partial<{ amount: number; date: string; isPaid: boolean }>) => {
@@ -321,13 +273,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: Date.now().toString()
     };
     setBulletinPosts(prev => [newPost, ...prev]);
-    
-    // Log activity
-    addActivity({
-      type: 'bulletin_posted',
-      description: `New bulletin post: "${newPost.title}"`,
-      user: user?.name || 'System'
-    });
   };
 
   const updateBulletinPost = (id: string, updates: Partial<BulletinPost>) => {
