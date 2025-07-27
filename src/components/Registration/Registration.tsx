@@ -7,6 +7,7 @@ import { Member, MemberStatus } from '../../types';
 const Registration: React.FC = () => {
   const { addMember } = useData();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,6 +26,7 @@ const Registration: React.FC = () => {
     const newMember: Omit<Member, 'id'> = {
       memberNumber: generateMemberNumber(),
       ...formData,
+      profilePicture: profilePhoto || undefined,
       payments: [],
       delinquentYears: 0,
       totalDelinquentAmount: 0
@@ -32,6 +34,7 @@ const Registration: React.FC = () => {
 
     addMember(newMember);
     setIsFormOpen(false);
+    setProfilePhoto(null);
     setFormData({
       name: '',
       email: '',
@@ -48,6 +51,18 @@ const Registration: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setProfilePhoto(result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -205,11 +220,34 @@ const Registration: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Profile Picture
                     </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                      <Upload className="mx-auto h-8 w-8 text-gray-400" />
-                      <p className="mt-2 text-sm text-gray-600">Click to upload or drag and drop</p>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 2MB</p>
-                    </div>
+                    {profilePhoto ? (
+                      <div className="relative">
+                        <img
+                          src={profilePhoto}
+                          alt="Profile preview"
+                          className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setProfilePhoto(null)}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors cursor-pointer block">
+                        <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                        <p className="mt-2 text-sm text-gray-600">Click to upload or drag and drop</p>
+                        <p className="text-xs text-gray-500">PNG, JPG up to 2MB</p>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
                   </div>
 
                   <div>

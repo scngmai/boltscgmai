@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { User, Mail, Phone, Calendar, MapPin, Edit, Save, X } from 'lucide-react';
+import { User, Mail, Phone, Calendar, MapPin, Edit, Save, X, Upload, Camera } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
-  const { members } = useData();
+  const { members, updateMember } = useData();
   const [isEditing, setIsEditing] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -18,26 +19,65 @@ const Profile: React.FC = () => {
   // Find member data if user is a member
   const memberData = user?.memberId ? members.find(m => m.memberNumber === user.memberId) : null;
 
+  // Initialize form data when member data is available
+  React.useEffect(() => {
+    if (memberData) {
+      setFormData({
+        name: memberData.name,
+        email: memberData.email || '',
+        phone: memberData.phone || '',
+        address: memberData.address || '',
+        dateOfBirth: memberData.dateOfBirth || ''
+      });
+      setProfilePhoto(memberData.profilePicture || null);
+    }
+  }, [memberData]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSave = () => {
-    // In a real app, this would update the user profile
-    console.log('Saving profile:', formData);
+    if (memberData) {
+      // Update member data
+      updateMember(memberData.id, {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        dateOfBirth: formData.dateOfBirth,
+        profilePicture: profilePhoto || undefined
+      });
+      console.log('Profile updated successfully');
+    }
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setFormData({
-      name: user?.name || '',
-      email: user?.email || '',
-      phone: memberData?.phone || '',
-      address: memberData?.address || '',
-      dateOfBirth: memberData?.dateOfBirth || ''
-    });
+    if (memberData) {
+      setFormData({
+        name: memberData.name,
+        email: memberData.email || '',
+        phone: memberData.phone || '',
+        address: memberData.address || '',
+        dateOfBirth: memberData.dateOfBirth || ''
+      });
+      setProfilePhoto(memberData.profilePicture || null);
+    }
     setIsEditing(false);
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setProfilePhoto(result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   if (!user) return null;
@@ -82,10 +122,31 @@ const Profile: React.FC = () => {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="text-center">
-              <div className="w-24 h-24 bg-indigo-100 rounded-full mx-auto flex items-center justify-center mb-4">
-                <User className="h-12 w-12 text-indigo-600" />
+              <div className="relative w-24 h-24 mx-auto mb-4">
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt={user.name}
+                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                  />
+                ) : (
+                  <div className="w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                    <User className="h-12 w-12 text-indigo-600" />
+                  </div>
+                )}
+                {isEditing && (
+                  <label className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2 rounded-full cursor-pointer hover:bg-indigo-700 transition-colors">
+                    <Camera className="h-4 w-4" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">{user.name}</h2>
+              <h2 className="text-xl font-semibold text-gray-900">{memberData?.name || user.name}</h2>
               <p className="text-sm text-indigo-600 font-medium">{user.role}</p>
               {memberData && (
                 <p className="text-sm text-gray-500 mt-1">{memberData.memberNumber}</p>
