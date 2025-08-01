@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -9,17 +10,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Mock users for demonstration
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'gabu.sacro@gmail.com',
-    role: 'Admin',
-    status: 'active'
-  }
-];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -37,16 +27,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Mock authentication - in real app, this would be an API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = mockUsers.find(u => u.email === email);
-    
-    if (foundUser && password === 'password123') {
-      setUser(foundUser);
-      localStorage.setItem('scngmai_user', JSON.stringify(foundUser));
-      setIsLoading(false);
-      return true;
+    try {
+      // Check if user exists in database
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error || !userData) {
+        setIsLoading(false);
+        return false;
+      }
+
+      // Simple password check (in production, use proper authentication)
+      if (password === 'password123') {
+        const userObj: User = {
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          status: userData.status,
+          memberId: userData.member_id || undefined
+        };
+
+        setUser(userObj);
+        localStorage.setItem('scngmai_user', JSON.stringify(userObj));
+        setIsLoading(false);
+        return true;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
     }
     
     setIsLoading(false);
