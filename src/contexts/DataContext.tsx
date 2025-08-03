@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Member, Officer, Milestone, BulletinPost, Payment } from '../types';
 import { updateMemberDelinquency } from '../utils/memberUtils';
-import { supabase } from '../lib/supabase';
+import { supabase, logActivity } from '../lib/supabase';
 
 interface DataContextType {
   members: Member[];
   officers: Officer[];
   milestones: Milestone[];
   bulletinPosts: BulletinPost[];
+  activityLogs: any[];
   addMember: (member: Omit<Member, 'id'>) => Promise<void>;
   updateMember: (id: string, updates: Partial<Member>) => Promise<void>;
   deleteMember: (id: string) => Promise<void>;
@@ -22,6 +23,7 @@ interface DataContextType {
   addBulletinPost: (post: Omit<BulletinPost, 'id'>) => Promise<void>;
   updateBulletinPost: (id: string, updates: Partial<BulletinPost>) => Promise<void>;
   deleteBulletinPost: (id: string) => Promise<void>;
+  loadActivityLogs: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -32,6 +34,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [bulletinPosts, setBulletinPosts] = useState<BulletinPost[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load data from Supabase
@@ -46,7 +49,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loadMembers(),
         loadOfficers(),
         loadMilestones(),
-        loadBulletinPosts()
+        loadBulletinPosts(),
+        loadActivityLogs()
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -55,6 +59,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loadActivityLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      setActivityLogs(data || []);
+    } catch (error) {
+      console.error('Error loading activity logs:', error);
+    }
+  };
   const loadMembers = async () => {
     try {
       const { data: membersData, error: membersError } = await supabase
@@ -205,7 +224,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      await logActivity('member_add', `New member ${memberData.name} registered`, 'member', data.id);
       await loadMembers();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error adding member:', error);
       throw error;
@@ -238,7 +259,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      const member = members.find(m => m.id === id);
+      await logActivity('member_update', `Member ${member?.name || 'Unknown'} updated`, 'member', id);
       await loadMembers();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error updating member:', error);
       throw error;
@@ -247,6 +271,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteMember = async (id: string) => {
     try {
+      const member = members.find(m => m.id === id);
       const { error } = await supabase
         .from('members')
         .delete()
@@ -254,7 +279,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      await logActivity('member_delete', `Member ${member?.name || 'Unknown'} deleted`, 'member', id);
       await loadMembers();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error deleting member:', error);
       throw error;
@@ -275,7 +302,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      const member = members.find(m => m.id === memberId);
+      await logActivity('payment_add', `Payment received from ${member?.name || 'Unknown'} for ${year}`, 'payment', `${memberId}-${year}`);
       await loadMembers();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error adding payment:', error);
       throw error;
@@ -297,7 +327,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      const member = members.find(m => m.id === memberId);
+      await logActivity('payment_update', `Payment updated for ${member?.name || 'Unknown'} - ${year}`, 'payment', `${memberId}-${year}`);
       await loadMembers();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error updating payment:', error);
       throw error;
@@ -319,7 +352,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      await logActivity('officer_add', `New officer ${officerData.name} added as ${officerData.position}`, 'officer');
       await loadOfficers();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error adding officer:', error);
       throw error;
@@ -343,7 +378,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      const officer = officers.find(o => o.id === id);
+      await logActivity('officer_update', `Officer ${officer?.name || 'Unknown'} updated`, 'officer', id);
       await loadOfficers();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error updating officer:', error);
       throw error;
@@ -352,6 +390,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteOfficer = async (id: string) => {
     try {
+      const officer = officers.find(o => o.id === id);
       const { error } = await supabase
         .from('officers')
         .delete()
@@ -359,7 +398,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      await logActivity('officer_delete', `Officer ${officer?.name || 'Unknown'} removed`, 'officer', id);
       await loadOfficers();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error deleting officer:', error);
       throw error;
@@ -379,7 +420,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      await logActivity('milestone_add', `New milestone created for age ${milestoneData.age}`, 'milestone');
       await loadMilestones();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error adding milestone:', error);
       throw error;
@@ -401,7 +444,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      const milestone = milestones.find(m => m.id === id);
+      await logActivity('milestone_update', `Milestone for age ${milestone?.age || 'Unknown'} updated`, 'milestone', id);
       await loadMilestones();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error updating milestone:', error);
       throw error;
@@ -410,6 +456,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteMilestone = async (id: string) => {
     try {
+      const milestone = milestones.find(m => m.id === id);
       const { error } = await supabase
         .from('milestones')
         .delete()
@@ -417,7 +464,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      await logActivity('milestone_delete', `Milestone for age ${milestone?.age || 'Unknown'} deleted`, 'milestone', id);
       await loadMilestones();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error deleting milestone:', error);
       throw error;
@@ -438,7 +487,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      await logActivity('bulletin_add', `New bulletin post "${postData.title}" created`, 'bulletin');
       await loadBulletinPosts();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error adding bulletin post:', error);
       throw error;
@@ -461,7 +512,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      const post = bulletinPosts.find(p => p.id === id);
+      await logActivity('bulletin_update', `Bulletin post "${post?.title || 'Unknown'}" updated`, 'bulletin', id);
       await loadBulletinPosts();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error updating bulletin post:', error);
       throw error;
@@ -470,6 +524,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteBulletinPost = async (id: string) => {
     try {
+      const post = bulletinPosts.find(p => p.id === id);
       const { error } = await supabase
         .from('bulletin_posts')
         .delete()
@@ -477,7 +532,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      await logActivity('bulletin_delete', `Bulletin post "${post?.title || 'Unknown'}" deleted`, 'bulletin', id);
       await loadBulletinPosts();
+      await loadActivityLogs();
     } catch (error) {
       console.error('Error deleting bulletin post:', error);
       throw error;
@@ -490,6 +547,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       officers,
       milestones,
       bulletinPosts,
+      activityLogs,
       addMember,
       updateMember,
       deleteMember,
@@ -504,6 +562,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addBulletinPost,
       updateBulletinPost,
       deleteBulletinPost,
+      loadActivityLogs,
       isLoading
     }}>
       {children}

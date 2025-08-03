@@ -9,10 +9,99 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Activity logging function
+export const logActivity = async (action: string, description: string, entityType?: string, entityId?: string, metadata?: any) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Get user profile for name
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('name')
+      .eq('user_id', user.id)
+      .single();
+
+    await supabase
+      .from('activity_logs')
+      .insert({
+        user_id: user.id,
+        user_name: profile?.name || user.email || 'Unknown User',
+        action,
+        description,
+        entity_type: entityType,
+        entity_id: entityId,
+        metadata: metadata || {}
+      });
+  } catch (error) {
+    console.error('Error logging activity:', error);
+  }
+};
 // Database types
 export interface Database {
   public: {
     Tables: {
+      user_profiles: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          role: string;
+          status: string;
+          member_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          role?: string;
+          status?: string;
+          member_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          role?: string;
+          status?: string;
+          member_id?: string | null;
+        };
+      };
+      activity_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          user_name: string;
+          action: string;
+          description: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          metadata: any;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          user_name: string;
+          action: string;
+          description: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          metadata?: any;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          user_name?: string;
+          action?: string;
+          description?: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          metadata?: any;
+        };
+      };
       members: {
         Row: {
           id: string;
