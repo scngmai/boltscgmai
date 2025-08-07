@@ -1,20 +1,44 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Get environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+console.log('Supabase Configuration:');
+console.log('URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
+console.log('Key:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  console.error('Missing Supabase environment variables!');
+  console.error('Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file');
+  throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create Supabase client
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
+
+// Test connection
+supabase.from('user_profiles').select('count', { count: 'exact', head: true })
+  .then(({ error }) => {
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+    } else {
+      console.log('✅ Supabase connection successful');
+    }
+  });
 
 // Activity logging function
 export const logActivity = async (action: string, description: string, entityType?: string, entityId?: string, metadata?: any) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log('No user found for activity logging');
+      console.log('No authenticated user for activity logging');
       return;
     }
 
@@ -25,9 +49,9 @@ export const logActivity = async (action: string, description: string, entityTyp
       .eq('user_id', user.id)
       .single();
 
-    console.log('Logging activity:', { action, description, user: user.id, profile });
+    console.log('Logging activity:', { action, description, user: user.id });
 
-    await supabase
+    const { error } = await supabase
       .from('activity_logs')
       .insert({
         user_id: user.id,
@@ -38,11 +62,16 @@ export const logActivity = async (action: string, description: string, entityTyp
         entity_id: entityId,
         metadata: metadata || {}
       });
+
+    if (error) {
+      console.error('Error logging activity:', error);
+    }
   } catch (error) {
-    console.error('Error logging activity:', error);
+    console.error('Error in logActivity:', error);
     // Don't throw error to prevent breaking the main functionality
   }
 };
+
 // Database types
 export interface Database {
   public: {
@@ -106,201 +135,6 @@ export interface Database {
           entity_type?: string | null;
           entity_id?: string | null;
           metadata?: any;
-        };
-      };
-      members: {
-        Row: {
-          id: string;
-          member_number: string;
-          name: string;
-          email: string | null;
-          phone: string | null;
-          status: 'Active' | 'Inactive' | 'Deceased' | 'Dropped' | 'Served';
-          date_of_birth: string | null;
-          address: string | null;
-          notes: string | null;
-          registration_year: number;
-          registration_date: string;
-          profile_picture: string | null;
-          health_certificate: string | null;
-          delinquent_years: number;
-          total_delinquent_amount: number;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          member_number: string;
-          name: string;
-          email?: string | null;
-          phone?: string | null;
-          status?: 'Active' | 'Inactive' | 'Deceased' | 'Dropped' | 'Served';
-          date_of_birth?: string | null;
-          address?: string | null;
-          notes?: string | null;
-          registration_year?: number;
-          registration_date?: string;
-          profile_picture?: string | null;
-          health_certificate?: string | null;
-          delinquent_years?: number;
-          total_delinquent_amount?: number;
-        };
-        Update: {
-          id?: string;
-          member_number?: string;
-          name?: string;
-          email?: string | null;
-          phone?: string | null;
-          status?: 'Active' | 'Inactive' | 'Deceased' | 'Dropped' | 'Served';
-          date_of_birth?: string | null;
-          address?: string | null;
-          notes?: string | null;
-          registration_year?: number;
-          registration_date?: string;
-          profile_picture?: string | null;
-          health_certificate?: string | null;
-          delinquent_years?: number;
-          total_delinquent_amount?: number;
-        };
-      };
-      payments: {
-        Row: {
-          id: string;
-          member_id: string;
-          year: number;
-          date: string | null;
-          amount: number;
-          is_paid: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          member_id: string;
-          year: number;
-          date?: string | null;
-          amount?: number;
-          is_paid?: boolean;
-        };
-        Update: {
-          id?: string;
-          member_id?: string;
-          year?: number;
-          date?: string | null;
-          amount?: number;
-          is_paid?: boolean;
-        };
-      };
-      officers: {
-        Row: {
-          id: string;
-          name: string;
-          position: string;
-          email: string | null;
-          phone: string | null;
-          profile_picture: string | null;
-          member_id: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          position: string;
-          email?: string | null;
-          phone?: string | null;
-          profile_picture?: string | null;
-          member_id?: string | null;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          position?: string;
-          email?: string | null;
-          phone?: string | null;
-          profile_picture?: string | null;
-          member_id?: string | null;
-        };
-      };
-      milestones: {
-        Row: {
-          id: string;
-          age: number;
-          amount: number;
-          description: string;
-          is_active: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          age: number;
-          amount: number;
-          description: string;
-          is_active?: boolean;
-        };
-        Update: {
-          id?: string;
-          age?: number;
-          amount?: number;
-          description?: string;
-          is_active?: boolean;
-        };
-      };
-      bulletin_posts: {
-        Row: {
-          id: string;
-          title: string;
-          content: string;
-          author: string;
-          date: string;
-          is_active: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          title: string;
-          content: string;
-          author: string;
-          date?: string;
-          is_active?: boolean;
-        };
-        Update: {
-          id?: string;
-          title?: string;
-          content?: string;
-          author?: string;
-          date?: string;
-          is_active?: boolean;
-        };
-      };
-      users: {
-        Row: {
-          id: string;
-          name: string;
-          email: string;
-          role: 'Admin' | 'President' | 'Secretary' | 'Treasurer' | 'Auditor' | 'Public Information Officer' | 'Board of Directors' | 'Member';
-          status: string;
-          member_id: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          email: string;
-          role?: 'Admin' | 'President' | 'Secretary' | 'Treasurer' | 'Auditor' | 'Public Information Officer' | 'Board of Directors' | 'Member';
-          status?: string;
-          member_id?: string | null;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          email?: string;
-          role?: 'Admin' | 'President' | 'Secretary' | 'Treasurer' | 'Auditor' | 'Public Information Officer' | 'Board of Directors' | 'Member';
-          status?: string;
-          member_id?: string | null;
         };
       };
     };

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { supabase, logActivity } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -22,65 +22,113 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
       if (event === 'SIGNED_IN' && session) {
-        await loadUserProfile(session.user.id);
+        await loadUserProfile(session.user.id, session.user.email || '');
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
       }
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const checkUser = async () => {
-    setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await loadUserProfile(session.user.id);
+      console.log('Checking existing session...');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Session check error:', error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (session?.user) {
+        console.log('Found existing session for:', session.user.email);
+        await loadUserProfile(session.user.id, session.user.email || '');
+      } else {
+        console.log('No existing session found');
       }
     } catch (error) {
-      console.error('Error checking user:', error);
+      console.error('Error checking user session:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadUserProfile = async (userId: string) => {
+  const loadUserProfile = async (userId: string, email: string) => {
     try {
-      const { data: profile, error } = await supabase
+      console.log('Loading user profile for:', userId, email);
+      
+      // First check if user profile exists
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
 
-      if (error) {
-        console.error('Error loading user profile:', error);
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error loading user profile:', profileError);
         return;
       }
 
-      if (profile) {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser) {
-          const userObj: User = {
-            id: profile.id,
-            name: profile.name,
-            email: authUser.email || '',
-            role: profile.role as UserRole,
-            status: profile.status,
-            memberId: profile.member_id || undefined
-          };
-          setUser(userObj);
+      if (!profile) {
+        console.log('No profile found, creating one...');
+        // Create profile for new user
+        const { data: newProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            name: email.split('@')[0], // Use email prefix as default name
+            role: 'Admin', // First user gets admin role
+            status: 'active'
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating user profile:', createError);
+          return;
         }
+
+        console.log('Created new profile:', newProfile);
+        
+        const userObj: User = {
+          id: newProfile.id,
+          name: newProfile.name,
+          email: email,
+          role: newProfile.role as UserRole,
+          status: newProfile.status,
+          memberId: newProfile.member_id || undefined
+        };
+        
+        setUser(userObj);
+      } else {
+        console.log('Found existing profile:', profile);
+        
+        const userObj: User = {
+          id: profile.id,
+          name: profile.name,
+          email: email,
+          role: profile.role as UserRole,
+          status: profile.status,
+          memberId: profile.member_id || undefined
+        };
+        
+        setUser(userObj);
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('Error in loadUserProfile:', error);
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, role: UserRole = 'Member') => {
+  const signUp = async (email: string, password: string, name: string, role: UserRole = 'Admin') => {
     try {
-      console.log('Starting signup process...', { email, name, role });
+      console.log('Starting signup process for:', email);
+      setIsLoading(true);
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -94,25 +142,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Signup error:', error);
+        setIsLoading(false);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
         console.log('User created successfully:', data.user.id);
-        await logActivity('user_signup', `New user ${name} registered with email ${email}`, 'user', data.user.id);
+        
+        // Create user profile immediately
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: data.user.id,
+            name: name,
+            role: role,
+            status: 'active'
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        }
+
+        setIsLoading(false);
         return { success: true };
       }
 
+      setIsLoading(false);
       return { success: false, error: 'Failed to create user' };
     } catch (error) {
       console.error('Sign up error:', error);
+      setIsLoading(false);
       return { success: false, error: 'An unexpected error occurred' };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Starting signin process...', { email });
+      console.log('Starting signin process for:', email);
+      setIsLoading(true);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -121,28 +188,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Signin error:', error);
+        setIsLoading(false);
         return { success: false, error: error.message };
       }
 
-      if (data.user) {
+      if (data.user && data.session) {
         console.log('User signed in successfully:', data.user.id);
-        await loadUserProfile(data.user.id);
-        await logActivity('user_signin', `User signed in`, 'user', data.user.id);
+        await loadUserProfile(data.user.id, data.user.email || '');
+        setIsLoading(false);
         return { success: true };
       }
 
+      setIsLoading(false);
       return { success: false, error: 'Failed to sign in' };
     } catch (error) {
       console.error('Sign in error:', error);
+      setIsLoading(false);
       return { success: false, error: 'An unexpected error occurred' };
     }
   };
 
   const logout = async () => {
     try {
-      if (user) {
-        await logActivity('user_signout', `User signed out`, 'user', user.id);
-      }
+      console.log('Logging out user...');
       await supabase.auth.signOut();
       setUser(null);
     } catch (error) {
