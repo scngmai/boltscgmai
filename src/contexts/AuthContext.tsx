@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, logActivity } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -80,31 +80,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, name: string, role: UserRole = 'Member') => {
     try {
+      console.log('Starting signup process...', { email, name, role });
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name: name
+          }
+        }
       });
 
       if (error) {
+        console.error('Signup error:', error);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: data.user.id,
-            name,
-            role,
-            status: 'active'
-          });
-
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-          return { success: false, error: 'Failed to create user profile' };
-        }
-
+        console.log('User created successfully:', data.user.id);
+        await logActivity('user_signup', `New user ${name} registered with email ${email}`, 'user', data.user.id);
         return { success: true };
       }
 
@@ -117,17 +112,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Starting signin process...', { email });
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('Signin error:', error);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
+        console.log('User signed in successfully:', data.user.id);
         await loadUserProfile(data.user.id);
+        await logActivity('user_signin', `User signed in`, 'user', data.user.id);
         return { success: true };
       }
 
@@ -140,6 +140,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      if (user) {
+        await logActivity('user_signout', `User signed out`, 'user', user.id);
+      }
       await supabase.auth.signOut();
       setUser(null);
     } catch (error) {

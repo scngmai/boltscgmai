@@ -24,6 +24,7 @@ const LoginForm: React.FC = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    console.log('Attempting signup with:', { email, name });
 
     if (!name.trim()) {
       setError('Name is required');
@@ -33,9 +34,12 @@ const LoginForm: React.FC = () => {
     const result = await signUp(email, password, name);
     if (!result.success) {
       setError(result.error || 'Failed to create account');
+      console.error('Signup failed:', result.error);
     } else {
       setError('');
-      alert('Account created successfully! Please check your email to verify your account, then sign in.');
+      console.log('Signup successful');
+      // Don't require email verification for now
+      alert('Account created successfully! You can now sign in.');
       setIsSignUp(false);
       setName('');
       setEmail('');
@@ -161,7 +165,8 @@ const LoginForm: React.FC = () => {
             <div className="text-sm text-gray-600">
               <p className="font-medium mb-2">For Testing:</p>
               <div className="space-y-1 text-xs">
-                <p>Create a new account or contact admin for access</p>
+                <p>Email: gabu.sacro@gmail.com</p>
+                <p>Or create a new account</p>
                 <p className="mt-2 text-xs text-gray-500">First user will be assigned Admin role automatically</p>
               </div>
             </div>

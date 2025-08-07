@@ -61,14 +61,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadActivityLogs = async () => {
     try {
+      console.log('Loading activity logs...');
       const { data, error } = await supabase
         .from('activity_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading activity logs:', error);
+        return;
+      }
 
+      console.log('Activity logs loaded:', data?.length || 0);
       setActivityLogs(data || []);
     } catch (error) {
       console.error('Error loading activity logs:', error);
@@ -76,19 +81,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   const loadMembers = async () => {
     try {
+      console.log('Loading members...');
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('Error loading members:', membersError);
+        return;
+      }
 
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
         .select('*');
 
-      if (paymentsError) throw paymentsError;
+      if (paymentsError) {
+        console.error('Error loading payments:', paymentsError);
+        return;
+      }
 
+      console.log('Members loaded:', membersData?.length || 0);
+      console.log('Payments loaded:', paymentsData?.length || 0);
+      
       const membersWithPayments = (membersData || []).map(member => {
         const memberPayments = (paymentsData || [])
           .filter(payment => payment.member_id === member.id)
@@ -129,13 +144,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadOfficers = async () => {
     try {
+      console.log('Loading officers...');
       const { data, error } = await supabase
         .from('officers')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading officers:', error);
+        return;
+      }
 
+      console.log('Officers loaded:', data?.length || 0);
       const officersData = (data || []).map(officer => ({
         id: officer.id,
         name: officer.name,
@@ -154,13 +174,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadMilestones = async () => {
     try {
+      console.log('Loading milestones...');
       const { data, error } = await supabase
         .from('milestones')
         .select('*')
         .order('age', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading milestones:', error);
+        return;
+      }
 
+      console.log('Milestones loaded:', data?.length || 0);
       const milestonesData = (data || []).map(milestone => ({
         id: milestone.id,
         age: milestone.age,
@@ -177,13 +202,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadBulletinPosts = async () => {
     try {
+      console.log('Loading bulletin posts...');
       const { data, error } = await supabase
         .from('bulletin_posts')
         .select('*')
         .order('date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading bulletin posts:', error);
+        return;
+      }
 
+      console.log('Bulletin posts loaded:', data?.length || 0);
       const postsData = (data || []).map(post => ({
         id: post.id,
         title: post.title,
@@ -201,6 +231,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addMember = async (memberData: Omit<Member, 'id'>) => {
     try {
+      console.log('Adding member:', memberData.name);
       const { data, error } = await supabase
         .from('members')
         .insert({
@@ -222,8 +253,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding member:', error);
+        throw error;
+      }
 
+      console.log('Member added successfully:', data.id);
       await logActivity('member_add', `New member ${memberData.name} registered`, 'member', data.id);
       await loadMembers();
       await loadActivityLogs();

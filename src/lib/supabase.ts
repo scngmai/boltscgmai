@@ -13,7 +13,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const logActivity = async (action: string, description: string, entityType?: string, entityId?: string, metadata?: any) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      console.log('No user found for activity logging');
+      return;
+    }
 
     // Get user profile for name
     const { data: profile } = await supabase
@@ -21,6 +24,8 @@ export const logActivity = async (action: string, description: string, entityTyp
       .select('name')
       .eq('user_id', user.id)
       .single();
+
+    console.log('Logging activity:', { action, description, user: user.id, profile });
 
     await supabase
       .from('activity_logs')
@@ -35,6 +40,7 @@ export const logActivity = async (action: string, description: string, entityTyp
       });
   } catch (error) {
     console.error('Error logging activity:', error);
+    // Don't throw error to prevent breaking the main functionality
   }
 };
 // Database types
