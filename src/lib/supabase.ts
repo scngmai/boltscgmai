@@ -4,13 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-console.log('Supabase Configuration:');
-console.log('URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
-console.log('Key:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
-
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables!');
-  console.error('Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file');
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
@@ -19,26 +13,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   }
 });
-
-// Test connection
-supabase.from('user_profiles').select('count', { count: 'exact', head: true })
-  .then(({ error }) => {
-    if (error) {
-      console.error('Supabase connection test failed:', error);
-    } else {
-      console.log('✅ Supabase connection successful');
-    }
-  });
 
 // Activity logging function
 export const logActivity = async (action: string, description: string, entityType?: string, entityId?: string, metadata?: any) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log('No authenticated user for activity logging');
       return;
     }
 
@@ -48,8 +32,6 @@ export const logActivity = async (action: string, description: string, entityTyp
       .select('name')
       .eq('user_id', user.id)
       .single();
-
-    console.log('Logging activity:', { action, description, user: user.id });
 
     const { error } = await supabase
       .from('activity_logs')
@@ -68,7 +50,6 @@ export const logActivity = async (action: string, description: string, entityTyp
     }
   } catch (error) {
     console.error('Error in logActivity:', error);
-    // Don't throw error to prevent breaking the main functionality
   }
 };
 

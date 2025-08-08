@@ -17,18 +17,12 @@ const LoginForm: React.FC = () => {
     setError('');
     setIsSubmitting(true);
 
-    console.log('Attempting to sign in with:', email);
-
     try {
       const result = await signIn(email, password);
       if (!result.success) {
         setError(result.error || 'Failed to sign in');
-        console.error('Sign in failed:', result.error);
-      } else {
-        console.log('Sign in successful');
       }
     } catch (error) {
-      console.error('Sign in exception:', error);
       setError('An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
@@ -46,22 +40,17 @@ const LoginForm: React.FC = () => {
       return;
     }
 
-    console.log('Attempting to sign up with:', email, name);
-
     try {
       const result = await signUp(email, password, name);
       if (!result.success) {
         setError(result.error || 'Failed to create account');
-        console.error('Signup failed:', result.error);
       } else {
-        console.log('Signup successful');
         alert('Account created successfully! You can now sign in.');
         setIsSignUp(false);
         setName('');
         setPassword('');
       }
     } catch (error) {
-      console.error('Sign up exception:', error);
       setError('An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
